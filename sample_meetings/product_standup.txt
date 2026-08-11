@@ -1,0 +1,19 @@
+Alice: Good morning everyone, let's get started with the standup. Quick round of updates and then we need to talk about the launch date.
+Bob: Morning! I finished the API documentation update yesterday. I'll send the API docs to the marketing team by Friday so they can prep the developer newsletter.
+Alice: Great, thanks Bob. Carol, how's the onboarding flow coming along?
+Carol: Mostly good news. I found a bug where new users get stuck on step three if they sign up with a work email. I will fix the onboarding flow bug and deploy it by Wednesday.
+Alice: Nice catch. Is that going to block anything else?
+Carol: Shouldn't, it's isolated to that one screen.
+Dave: On the QA side, I've been running through the regression suite. Found a couple of minor issues, nothing scary. I'll finish the regression test suite by end of week.
+Erin: The new empty-state illustrations are done and in the design library. I'm pretty happy with how they turned out.
+Alice: They look great, thanks Erin. Okay, so the big question - are we still good for launch next Tuesday?
+Dave: Honestly, I'd feel safer with a bit more regression coverage given what Carol found.
+Bob: Agreed, and the docs update should land cleanly if we give it a few extra days.
+Carol: I'm fine either way but happy to have the buffer for the onboarding fix to bake.
+Alice: Okay, let's not rush it. The team agreed to postpone the launch by one week to allow more testing time. New target is a week from Tuesday.
+Erin: Sounds good to me, gives me time to also polish the loading states.
+Alice: Perfect. Bob, can you also loop in marketing about the date change?
+Bob: Yep, I'll mention it when I send the docs on Friday.
+Alice: Great. Overall I think this was a really productive week, everyone's in good shape. Let's wrap up here - same time tomorrow.
+Dave: Sounds good, thanks everyone.
+Carol: Thanks all, have a good one.

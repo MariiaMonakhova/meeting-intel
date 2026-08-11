@@ -1,0 +1,15 @@
+Alice: Thanks for joining on short notice. Let's walk through what happened with last night's outage before it's fresh.
+Frank: Sure. Around 2:14am the primary database started rejecting connections. Alerting fired about six minutes later, which is already too slow.
+Alice: Six minutes is rough. What caused the connection rejections?
+Grace: The payments service had a sudden spike in traffic from a retry storm - one of our downstream partners started hammering us after their own outage, and we had no circuit breaker in place.
+Frank: So the database connection pool got exhausted, and everything downstream started timing out too. Total downtime was about 47 minutes before we manually failed over.
+Henry: On the support side, we got close to 80 tickets in that window, mostly angry. A few enterprise customers escalated directly.
+Alice: That's a bad night. What do we do so this doesn't happen again?
+Grace: Two things. First, we need an actual circuit breaker on the payments service so a downstream partner's outage can't cascade into us. I will add a circuit breaker to the payments service by next sprint.
+Frank: And separately, our alerting was too slow and the on-call runbook didn't have clear steps for a connection-pool-exhaustion scenario. I'll update the on-call runbook with the new escalation steps by Monday.
+Alice: Good. Henry, anything from the support side we should capture?
+Henry: Mostly just that customers want proactive status page updates faster next time. We were about twenty minutes behind on that.
+Alice: Noted, we'll fold that into the runbook too. Given all this, I think we should treat this as a serious wake-up call - our resilience story has real gaps.
+Frank: Agreed, this was avoidable and it's frustrating that it took a customer-facing outage to expose it.
+Grace: Yeah, not our finest night. Glad we caught it before it got worse though.
+Alice: Let's reconvene in two weeks to confirm both the circuit breaker and the runbook updates are done.

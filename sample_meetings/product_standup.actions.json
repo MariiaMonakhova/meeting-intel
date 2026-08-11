@@ -1,0 +1,5 @@
+[
+  {"owner": "Bob", "task": "send the API docs to the marketing team by Friday"},
+  {"owner": "Carol", "task": "fix the onboarding flow bug and deploy it by Wednesday"},
+  {"owner": "Dave", "task": "finish the regression test suite by end of week"}
+]
