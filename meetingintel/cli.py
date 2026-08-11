@@ -20,6 +20,7 @@ from meetingintel.eval import evaluate_meeting
 from meetingintel.extraction import run_extraction
 from meetingintel.ingest import load_transcript_file
 from meetingintel.models import ActionItemGroundTruth, EvalResult, MeetingSummary, PipelineConfig, Transcript
+from meetingintel.quality import score_meeting_quality
 from meetingintel.rag.retriever import TfidfRetriever
 from meetingintel.rag.store import build_indexed_meeting, load_all_indexed_meetings, save_indexed_meeting
 
@@ -33,6 +34,7 @@ MENU = [
     "View attendee insights",
     "Run evaluation against ground truth",
     "Query cross-meeting RAG",
+    "Run meeting-quality scorer (bonus)",
     "Quit",
 ]
 
@@ -213,6 +215,18 @@ def _query_rag(session: Session) -> None:
     console.print(table)
 
 
+def _run_quality_scorer(session: Session) -> None:
+    if session.transcript is None or session.last_summary is None:
+        console.print("[red]Load a transcript and run extraction first.[/red]")
+        return
+    console.print("Scoring meeting quality (bonus, not part of extraction cost)...")
+    score = score_meeting_quality(session.transcript, session.last_summary, session.config, client=session.client)
+    console.print(
+        f"[green]engagement_level={score.engagement_level} decision_clarity={score.decision_clarity} "
+        f"follow_up_rate={score.follow_up_rate}[/green]\n{score.rationale}"
+    )
+
+
 _ACTIONS = {
     "Load transcript from file": _load_transcript,
     "Set parameters (chunk_size, overlap, map/reduce model)": _set_params,
@@ -221,6 +235,7 @@ _ACTIONS = {
     "View attendee insights": _view_attendee_insights,
     "Run evaluation against ground truth": _run_eval,
     "Query cross-meeting RAG": _query_rag,
+    "Run meeting-quality scorer (bonus)": _run_quality_scorer,
 }
 
 
