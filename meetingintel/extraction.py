@@ -23,6 +23,7 @@ from anthropic import Anthropic
 from pydantic import BaseModel
 
 from meetingintel.chunking import chunk_speaker_semantic
+from meetingintel.insights import build_attendee_insights
 from meetingintel.llm_client import timed_forced_tool_call
 from meetingintel.models import (
     ActionItem,
@@ -176,6 +177,9 @@ def run_extraction(
         Decision(description=d.description, decided_by=d.decided_by, source_chunk_id="reduce")
         for d in reduced.decisions
     ]
+    attendee_insights, insights_meta = build_attendee_insights(transcript, action_items, config, client=client)
+    extra_reduce_calls = 1 if transcript.attendees else 0
+
     map_cost = sum(ce.cost_usd for ce in chunk_extractions)
 
     return MeetingSummary(
@@ -183,10 +187,10 @@ def run_extraction(
         executive_summary=reduced.executive_summary,
         action_items=action_items,
         decisions=decisions,
-        attendee_insights=[],
+        attendee_insights=attendee_insights,
         overall_sentiment=reduced.overall_sentiment,
-        cost_usd=map_cost + reduce_meta["cost_usd"],
+        cost_usd=map_cost + reduce_meta["cost_usd"] + insights_meta["cost_usd"],
         api_calls_map=len(chunks),
-        api_calls_reduce=1,
+        api_calls_reduce=1 + extra_reduce_calls,
         wall_clock_s=time.monotonic() - start,
     )

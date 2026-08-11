@@ -140,7 +140,7 @@ def _transcript_n(n: int) -> Transcript:
         Utterance(speaker="Alice", text=" ".join(f"w{i}_{k}" for k in range(5)), index=i)
         for i in range(n)
     ]
-    return Transcript(meeting_id="m1", title="Test", utterances=utterances)
+    return Transcript(meeting_id="m1", title="Test", attendees=["Alice"], utterances=utterances)
 
 
 def test_run_extraction_empty_transcript_returns_empty_summary_without_api_calls():
@@ -153,8 +153,21 @@ def test_run_extraction_empty_transcript_returns_empty_summary_without_api_calls
     assert client.messages.create.call_count == 0
 
 
+def _insights_response(names: list[str], input_tokens=150, output_tokens=60):
+    return SimpleNamespace(
+        content=[SimpleNamespace(type="tool_use", input={
+            "insights": [
+                {"name": name, "sentiment_summary": "engaged", "notable_quotes": []}
+                for name in names
+            ],
+        })],
+        stop_reason="tool_use",
+        usage=SimpleNamespace(input_tokens=input_tokens, output_tokens=output_tokens),
+    )
+
+
 def test_run_extraction_sums_cost_and_stamps_reduce_source():
-    config = PipelineConfig()
+    config = PipelineConfig(chunk_size=5, overlap=0)
     client = MagicMock()
 
     def fake_create(**kwargs):
@@ -166,19 +179,27 @@ def test_run_extraction_sums_cost_and_stamps_reduce_source():
                 input_tokens=100,
                 output_tokens=50,
             )
-        return _reduce_response(input_tokens=200, output_tokens=80)
+        tool_name = kwargs["tool_choice"]["name"]
+        if tool_name == "record_meeting_summary":
+            return _reduce_response(input_tokens=200, output_tokens=80)
+        return _insights_response(["Alice"], input_tokens=150, output_tokens=60)
 
     client.messages.create.side_effect = fake_create
     # chunk_size (5) is smaller than a single utterance (5 words ~ 7 tokens),
     # so each of the 3 utterances forces its own chunk -> exactly 3 map calls.
     transcript = _transcript_n(3)
-    config = PipelineConfig(chunk_size=5, overlap=0)
 
     summary = run_extraction(transcript, config, client=client, parallelism=2)
 
     assert summary.api_calls_map == 3
-    assert summary.api_calls_reduce == 1
-    expected_cost = 3 * compute_cost(100, 50, "map") + compute_cost(200, 80, "reduce")
+    assert summary.api_calls_reduce == 2  # 1 merge call + 1 attendee-insights call
+    expected_cost = (
+        3 * compute_cost(100, 50, "map")
+        + compute_cost(200, 80, "reduce")
+        + compute_cost(150, 60, "reduce")
+    )
     assert summary.cost_usd == pytest.approx(expected_cost)
     assert all(a.source_chunk_id == "reduce" for a in summary.action_items)
     assert all(d.source_chunk_id == "reduce" for d in summary.decisions)
+    assert summary.attendee_insights[0].name == "Alice"
+    assert summary.attendee_insights[0].action_item_count == 1
