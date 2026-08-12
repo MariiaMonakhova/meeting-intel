@@ -2,19 +2,26 @@
 
 One screen: upload a meeting file, run the MapReduce extraction pipeline,
 show the reduce-phase result. A thin presentation layer over already-tested
-modules (config, file_extract, ingest, extraction) - no pipeline logic
-lives here, same principle as cli.py.
+modules (file_extract, ingest, extraction) - no pipeline logic lives here,
+same principle as cli.py.
+
+Bring-your-own-key: each visitor supplies their own ANTHROPIC_API_KEY in the
+UI, so a public deployment never spends the app owner's budget. The key is
+never written to disk or logged - it only lives in this browser session's
+memory, passed straight into the Anthropic client for that session's calls.
 
 Run with: streamlit run meetingintel/webapp.py
 """
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
+import anthropic
 import streamlit as st
+from anthropic import Anthropic
 
-from meetingintel.config import ensure_api_key
 from meetingintel.extraction import run_extraction
 from meetingintel.file_extract import SUPPORTED_EXTENSIONS, extract_text
 from meetingintel.ingest import parse_transcript
@@ -22,17 +29,23 @@ from meetingintel.models import PipelineConfig
 
 st.set_page_config(page_title="meeting-intel", page_icon="\U0001f5d2️")
 
-try:
-    ensure_api_key()
-except SystemExit as e:
-    st.error(str(e))
-    st.stop()
-
 st.title("meeting-intel")
 st.caption(
     "Upload a meeting transcript and get a MapReduce-extracted summary. "
-    "This calls the real Claude API - each run costs real money."
+    "This calls the real Claude API using YOUR key below - each run costs "
+    "real money on your Anthropic account, not the app owner's."
 )
+
+api_key = st.text_input(
+    "Your Anthropic API key",
+    type="password",
+    value=os.environ.get("ANTHROPIC_API_KEY", ""),
+    help="Never stored or logged - used only for this browser session's requests.",
+)
+
+if not api_key.strip():
+    st.info("Enter your Anthropic API key above to get started.")
+    st.stop()
 
 uploaded = st.file_uploader(
     "Meeting file",
@@ -63,8 +76,13 @@ if uploaded is not None:
             f"{len(transcript.attendees)} attendees: {', '.join(transcript.attendees)}"
         )
 
+        client = Anthropic(api_key=api_key)
         with st.spinner("Running extraction (calling Claude)..."):
-            summary = run_extraction(transcript, PipelineConfig())
+            try:
+                summary = run_extraction(transcript, PipelineConfig(), client=client)
+            except anthropic.APIError as e:
+                st.error(f"Claude API error - check that your key is valid and has credits: {e}")
+                st.stop()
 
         st.subheader("Executive summary")
         st.write(summary.executive_summary)
