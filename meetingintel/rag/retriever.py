@@ -1,11 +1,10 @@
 """Cross-meeting retrieval.
 
-Retriever is a narrow protocol so the scoring backend can be swapped later
-(e.g. for real embeddings) without touching callers. TfidfRetriever is the
-only implementation for now: lexical cosine similarity over TF-IDF vectors,
-no extra API key or cost - it teaches the RAG mechanics (index/query split,
-top-k ranking, injecting retrieved context into a prompt) even though the
-scoring itself is lexical rather than semantic.
+Retriever is a narrow protocol so the scoring backend can be swapped
+without touching callers. TfidfRetriever is the lexical baseline: cosine
+similarity over TF-IDF vectors, no extra API key or cost. VoyageRetriever
+(voyage_retriever.py) is the semantic alternative, behind the same
+protocol - this is the whole reason the protocol exists.
 """
 
 from __future__ import annotations
@@ -22,6 +21,7 @@ class IndexedMeeting(BaseModel):
     title: str
     date: str | None = None
     text: str  # flattened executive_summary + action items + decisions
+    embedding: list[float] | None = None  # cached, set by VoyageRetriever.index()
 
 
 class RetrievalResult(BaseModel):
