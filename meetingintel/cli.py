@@ -21,8 +21,8 @@ from meetingintel.extraction import run_extraction
 from meetingintel.ingest import load_transcript_file
 from meetingintel.models import ActionItemGroundTruth, EvalResult, MeetingSummary, PipelineConfig, Transcript
 from meetingintel.quality import score_meeting_quality
-from meetingintel.rag.retriever import TfidfRetriever
 from meetingintel.rag.store import build_indexed_meeting, load_all_indexed_meetings, save_indexed_meeting
+from meetingintel.rag.voyage_retriever import select_retriever
 
 console = Console()
 
@@ -47,8 +47,13 @@ class Session:
         self.config = PipelineConfig()
         self.last_summary: MeetingSummary | None = None
         self.last_eval: EvalResult | None = None
-        self.retriever = TfidfRetriever()
-        self.retriever.index(load_all_indexed_meetings())
+        self.retriever = select_retriever()
+        loaded = load_all_indexed_meetings()
+        needs_save = [m for m in loaded if m.embedding is None]
+        self.retriever.index(loaded)
+        for m in needs_save:
+            if m.embedding is not None:
+                save_indexed_meeting(m)
 
 
 def _choose(prompt: str, options: list[str]) -> str:
@@ -117,6 +122,7 @@ def _run_extraction(session: Session) -> None:
     )
     date_str = str(session.transcript.date) if session.transcript.date else None
     indexed = build_indexed_meeting(summary, title=session.transcript.title, date=date_str)
+    session.retriever.index([indexed])  # computes+caches embedding on `indexed` before it's saved
     save_indexed_meeting(indexed)
     session.retriever.index(load_all_indexed_meetings())
 
