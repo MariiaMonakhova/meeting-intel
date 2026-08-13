@@ -3,8 +3,9 @@
 A portfolio project: turns meeting transcripts into structured, evaluated
 intelligence using the real Claude API. Speaker-aware MapReduce chunking,
 structured extraction (action items, decisions, sentiment) via forced
-tool-use, cross-meeting RAG (local TF-IDF), and an evaluation harness that
-scores extraction quality against human-labeled ground truth.
+tool-use, cross-meeting RAG (local TF-IDF, or real Voyage AI embeddings if
+you add a key), and an evaluation harness that scores extraction quality
+against human-labeled ground truth.
 
 Sibling project to [doc-pipeline-lab](../doc-pipeline-lab), which explored
 the same MapReduce/chunking ideas against a deterministic emulator with no
@@ -27,8 +28,11 @@ printed after each run).
   Pydantic-validated JSON, not free-text parsing
 - Per-attendee insights: action-item counts computed in plain Python (free),
   sentiment/quotes from one additional model call
-- Cross-meeting RAG: local TF-IDF retrieval over past meetings, no extra
-  API key or cost
+- Cross-meeting RAG: local TF-IDF retrieval over past meetings by default
+  (no extra API key or cost); set `VOYAGE_API_KEY` to switch to real
+  semantic embeddings (Voyage AI) behind the same `Retriever` interface -
+  embeddings are computed once per meeting and cached in `meeting_store/`,
+  not recomputed on every run
 - Evaluation harness: deterministic precision/recall/F1 for action items
   (owner + task matching), LLM-judge scores for decisions and sentiment
 - Bonus: an opt-in meeting-quality scorer (engagement, decision clarity,
@@ -44,6 +48,8 @@ python3 -m venv .venv
 .venv/bin/pip install -e ".[dev]"
 cp .env.example .env
 # edit .env and add your ANTHROPIC_API_KEY
+# (optional) also add VOYAGE_API_KEY for real semantic RAG search instead
+# of the free TF-IDF fallback
 ```
 
 ## Tests
@@ -121,7 +127,8 @@ meetingintel/
   eval.py                    — deterministic action-item matching + LLM-judge scores
   quality.py                   — bonus meeting-quality scorer
   rag/
-    retriever.py                — Retriever protocol + TfidfRetriever
+    retriever.py                — Retriever protocol + TfidfRetriever (free, local, lexical)
+    voyage_retriever.py          — VoyageRetriever (real embeddings) + select_retriever()
     store.py                     — local JSON persistence for indexed meetings
   config.py                       — .env loading and API key validation
   cli.py                            — interactive REPL
